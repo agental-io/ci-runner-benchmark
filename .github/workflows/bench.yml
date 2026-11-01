@@ -1,0 +1,73 @@
+name: Bench
+
+# One sample of each job on GitHub's standard runner (ubuntu-latest: 4 vCPU, 16 GB for a
+# public repository). cold: no cache. warm: each job restores and saves its cache the way
+# GitHub's own documentation suggests, so a run after the first starts from it.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [cold, warm]
+        default: cold
+
+run-name: ${{ inputs.mode }}
+
+jobs:
+  bench:
+    name: ${{ matrix.job }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        job: [node-test, rust-build, docker-build]
+    env:
+      WORK: ${{ github.workspace }}/work
+      OUT: ${{ github.workspace }}/out/${{ matrix.job }}.jsonl
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        if: matrix.job == 'node-test'
+        with:
+          node-version: 24
+
+      - name: Restore npm cache
+        if: matrix.job == 'node-test' && inputs.mode == 'warm'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            work/src/node_modules
+          key: fastify-9f400035
+
+      - name: Restore cargo cache
+        if: matrix.job == 'rust-build' && inputs.mode == 'warm'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            work/src/target
+          key: ripgrep-e89fff89
+
+      - uses: docker/setup-buildx-action@v3
+        if: matrix.job == 'docker-build'
+
+      # Exposes the runtime token that buildx's type=gha cache needs.
+      - uses: crazy-max/ghaction-github-runtime@v3
+        if: matrix.job == 'docker-build' && inputs.mode == 'warm'
+
+      - name: Run ${{ matrix.job }}
+        env:
+          BUILD_ARGS: ${{ matrix.job == 'docker-build' && inputs.mode == 'warm' && '--cache-from type=gha,scope=umami --cache-to type=gha,mode=max,scope=umami' || '' }}
+        run: |
+          echo "cpus=$(nproc) mem=$(free -g | awk '/Mem/{print $2}')G" ; node --version || true; cargo --version || true
+          jobs/${{ matrix.job }}.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.job }}
+          path: out/
