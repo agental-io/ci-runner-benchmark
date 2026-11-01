@@ -6,7 +6,7 @@ run:   the job on its runner, from its start to its end, cache restore and save 
 """
 import datetime, io, json, pathlib, subprocess, sys, zipfile
 
-REPO = sys.argv[1] if len(sys.argv) > 1 else "zmf/ci-runner-benchmark"
+REPO = sys.argv[1] if len(sys.argv) > 1 else "agental-io/ci-runner-benchmark"
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
