@@ -19,12 +19,6 @@ jobs:
       RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
-      # The sandbox image's Node 24.22.2 hangs fastify's close.test.js; 24.22.1, which the first
-      # benchmark ran on, does not.
-      - uses: actions/setup-node@v4
-        if: matrix.job == 'node-test'
-        with:
-          node-version: 24.22.1
       - name: Run
         run: mkdir -p out && bash jobs/${{ matrix.job }}.sh
       - name: Steps
