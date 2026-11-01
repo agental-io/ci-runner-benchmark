@@ -1,0 +1,26 @@
+name: runs-on
+
+# The same three jobs on agental sandboxes through runs-on: one line, runs-on: agental-medium.
+# No cache step: the pool's sandbox keeps its disk between runs, so the second run is warm.
+on:
+  workflow_dispatch:
+
+jobs:
+  bench:
+    name: ${{ matrix.job }}
+    runs-on: agental-medium
+    strategy:
+      fail-fast: false
+      matrix:
+        job: [node-test, rust-build, docker-build]
+    env:
+      WORK: ${{ github.workspace }}/work
+      OUT: ${{ github.workspace }}/out/${{ matrix.job }}.jsonl
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run
+        run: mkdir -p out && bash jobs/${{ matrix.job }}.sh
+      - name: Steps
+        if: always()
+        run: cat "$OUT" || true
